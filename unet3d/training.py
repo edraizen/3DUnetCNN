@@ -6,11 +6,8 @@ from keras import backend as K
 from keras.callbacks import ModelCheckpoint, CSVLogger, Callback, LearningRateScheduler
 from keras.models import load_model
 
-from .generator import pickle_dump
+from .utils import pickle_dump
 from .model import dice_coef, dice_coef_loss
-
-K.set_image_dim_ordering('th')
-
 
 # learning rate schedule
 def step_decay(epoch, initial_lrate, drop, epochs_drop):
@@ -64,12 +61,12 @@ def train_model(model, model_file, training_generator, validation_generator, ste
     :param n_epochs: Total number of epochs to train the model.
     :return: 
     """
-    model.fit_generator(generator=training_generator,
+    model.fit_generator(use_multiprocessing=True,
+                        generator=training_generator,
                         steps_per_epoch=steps_per_epoch,
                         epochs=n_epochs,
                         validation_data=validation_generator,
                         validation_steps=validation_steps,
-                        pickle_safe=True,
                         callbacks=get_callbacks(model_file, initial_learning_rate=initial_learning_rate,
                                                 learning_rate_drop=learning_rate_drop,
                                                 learning_rate_epochs=learning_rate_epochs))

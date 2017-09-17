@@ -1,6 +1,6 @@
 import numpy as np
-from nilearn.image.image import check_niimg
-from nilearn.image.image import _crop_img_to as crop_img_to
+#from nilearn.image.image import check_niimg
+#from nilearn.image.image import _crop_img_to as crop_img_to
 
 
 def crop_img(img, rtol=1e-8, copy=True, return_slices=False):

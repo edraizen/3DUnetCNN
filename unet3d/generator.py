@@ -3,130 +3,134 @@ from random import shuffle
 
 import numpy as np
 
-from .utils import pickle_dump, pickle_load
-from .augment import augment_data
+#from .utils import pickle_dump, pickle_load
+#from .augment import augment_data
 
+import itertools as it
 
-def get_training_and_validation_generators(data_file, batch_size, n_labels, training_keys_file, validation_keys_file,
-                                           data_split=0.8, overwrite=False, labels=None, augment=False,
-                                           augment_flip=True, augment_distortion_factor=0.25):
-    """
-    Creates the training and validation generators that can be used when training the model.
-    :param augment_flip: if True and augment is True, then the data will be randomly flipped along the x, y and z axis
-    :param augment_distortion_factor: if augment is True, this determines the standard deviation from the original
-    that the data will be distorted (in a stretching or shrinking fashion). Set to None, False, or 0 to prevent the
-    augmentation from distorting the data in this way.
-    :param augment: If True, training data will be distorted on the fly so as to avoid over-fitting.
-    :param labels: List or tuple containing the ordered label values in the image files. The length of the list or tuple
-    should be equal to the n_labels value.
-    Example: (10, 25, 50)
-    The data generator would then return binary truth arrays representing the labels 10, 25, and 30 in that order.
-    :param data_file: hdf5 file to load the data from.
-    :param batch_size: Size of the batches that the training generator will provide.
-    :param n_labels: Number of binary labels.
-    :param training_keys_file: Pickle file where the index locations of the training data will be stored.
-    :param validation_keys_file: Pickle file where the index locations of the validation data will be stored.
-    :param data_split: How the training and validation data will be split. 0 means all the data will be used for
-    validation and none of it will be used for training. 1 means that all the data will be used for training and none
-    will be used for validation. Default is 0.8 or 80%.
-    :param overwrite: If set to True, previous files will be overwritten. The default mode is false, so that the
-    training and validation splits won't be overwritten when rerunning model training.
-    :return: Training data generator, validation data generator, number of training steps, number of validation steps
-    """
-    training_list, validation_list = get_validation_split(data_file, data_split=data_split, overwrite=overwrite,
-                                                          training_file=training_keys_file,
-                                                          testing_file=validation_keys_file)
-    training_generator = data_generator(data_file, training_list, batch_size=batch_size, n_labels=n_labels,
-                                        labels=labels, augment=augment, augment_flip=augment_flip,
-                                        augment_distortion_factor=augment_distortion_factor)
-    validation_generator = data_generator(data_file, validation_list, batch_size=batch_size, n_labels=n_labels,
-                                          labels=labels)
-    # Set the number of training and testing samples per epoch correctly
-    num_training_steps = len(training_list)//batch_size
-    num_validation_steps = len(validation_list)
-    return training_generator, validation_generator, num_training_steps, num_validation_steps
+class DataGenerator(object):
+    def __init__(self, data, truth=None, batch_size=1, indexes=None, shape=None, augment=False, train=True):
+        self.data = data
+        self.truth = truth
+        self.batch_size = batch_size
+        self.shape = shape
+        self.augment = augment
+        self.num_steps = len(indexes) if indexes else data.shape[0]
+        if train:
+            self.num_steps /= float(self.batch_size)
+        self.indexes = iter(suffle(indexes)) or iter(shuffle(xrange(data.shape[0])))
+        self.it = xrange(0, len(indexes) if indexes else data.shape[0], self.batch_size)
 
+    @classmethod
+    def get_training_and_validation(cls, data, truth, batch_size=1, data_split=0.8, shuffle_list=True):
+        n_training = int(data.shape[0] * data_split)
+        indexes = range(data.shape[0])
+        if shuffle_list:
+            shuffle(indexes)
+        
+        train = cls(data, truth, batch_size=batch_size, indexes=indexes[:n_training])
+        validation = cls(data_file.root.data, data_file.truth.data, batch_size=batch_size, indexes=indexes[n_training:], train=False)
+        return train, validation
 
-def get_validation_split(data_file, training_file, testing_file, data_split=0.8, overwrite=False):
-    if overwrite or not os.path.exists(training_file):
-        print("Creating validation split...")
-        nb_samples = data_file.root.data.shape[0]
-        sample_list = list(range(nb_samples))
-        training_list, testing_list = split_list(sample_list, split=data_split)
-        pickle_dump(training_list, training_file)
-        pickle_dump(testing_list, testing_file)
-        return training_list, testing_list
-    else:
-        print("Loading previous validation split...")
-        return pickle_load(training_file), pickle_load(testing_file)
+    def __iter__(self):
+        return self
 
-
-def split_list(input_list, split=0.8, shuffle_list=True):
-    if shuffle_list:
-        shuffle(input_list)
-    n_training = int(len(input_list) * split)
-    training = input_list[:n_training]
-    testing = input_list[n_training:]
-    return training, testing
-
-
-def data_generator(data_file, index_list, batch_size=1, n_labels=1, labels=None, augment=False, augment_flip=True,
-                   augment_distortion_factor=0.25):
-    while True:
-        x_list = list()
-        y_list = list()
-        shuffle(index_list)
-        for index in index_list:
-            add_data(x_list, y_list, data_file, index, augment=augment, augment_flip=augment_flip,
-                     augment_distortion_factor=augment_distortion_factor)
-            if len(x_list) == batch_size:
-                yield convert_data(x_list, y_list, n_labels=n_labels, labels=labels)
-                x_list = list()
-                y_list = list()
-
-
-def add_data(x_list, y_list, data_file, index, augment=False, augment_flip=True,
-             augment_distortion_factor=0.25):
-    """
-    Adds data from the data file to the given lists of feature and target data
-    :param x_list: list of data to which data from the data_file will be appended.
-    :param y_list: list of data to which the target data from the data_file will be appended.
-    :param data_file: hdf5 data file.
-    :param index: index of the data file from which to extract the data.
-    :param augment: if True, data will be augmented according to the other augmentation parameters (augment_flip and
-    augment_distortion_factor)
-    :param augment_flip: if True and augment is True, then the data will be randomly flipped along the x, y and z axis
-    :param augment_distortion_factor: if augment is True, this determines the standard deviation from the original
-    that the data will be distorted (in a stretching or shrinking fashion). Set to None, False, or 0 to prevent the
-    augmentation from distorting the data in this way.
-    :return:
-    """
-    data = data_file.root.data[index]
-    truth = data_file.root.truth[index, 0]
-    if augment:
-        data, truth = augment_data(data, truth, data_file.root.affine, flip=augment_flip,
-                                   scale_deviation=augment_distortion_factor)
-
-    x_list.append(data)
-    y_list.append([truth])
-
-
-def convert_data(x_list, y_list, n_labels=1, labels=None):
-    x = np.asarray(x_list)
-    y = np.asarray(y_list)
-    if n_labels == 1:
-        y[y > 0] = 1
-    elif n_labels > 1:
-        y = get_multi_class_labels(y, n_labels=n_labels, labels=labels)
-    return x, y
-
-
-def get_multi_class_labels(data, n_labels, labels=None):
-    new_shape = [data.shape[0], n_labels] + list(data.shape[2:])
-    y = np.zeros(new_shape, np.int8)
-    for label_index in range(n_labels):
-        if labels:
-            y[:, label_index][data[:, 0] == labels[label_index]] = 1
+    def next(self):
+        index = self.it.next() #Will raise StopIteration
+        indexes = self.indexes[index:index+self.batch_size]
+        data = self.data[indexes]
+        if self.truth:
+            truth =  self.truth[indexes]
         else:
-            y[:, label_index][data[:, 0] == (label_index + 1)] = 1
-    return y
+            truth = None
+
+        if self.augment and False:
+            data, truth = augment_data(data, truth, affine, flip=augment_flip,
+                                       scale_deviation=augment_distortion_factor)
+
+        return x, y
+
+class FileGenerator(DataGenerator):
+    @classmethod
+    def from_files(cls, files, truth_files=None, batch_size=1, data_split=0.8, num_samples=None):
+        """Read in data from one more more numpy files"""
+        (np.load(file) for file in files)
+
+    @classmethod
+    def get_training_and_validation(cls, data_files, truth_files, batch_size=1, data_split=0.8, num_samples=None):
+        assert lens(data_files) == len(truth_files)
+        for data_file, truth_file in it.izip(data_files, truth_files):
+            pass
+        
+        train = cls()
+        validation = cls()
+        return train, validation
+
+class NiftyFileUNet3d(DataGenerator):
+    @classmethod
+    def get_training_and_validation(cls, data_file, batch_size=1, data_split=0.8, shuffle_list=True):
+        train, validation = DataGenerator.get_training_and_validation(
+            data_file.root.data, data_file.root.truth.data,
+            batch_size=batch_size, data_split=data_split, shuffle_list=shuffle_list)
+        return train, validation
+
+class ExampleSphereGenerator(object):
+    """Create spheres surrounded by noise
+    """
+    def __init__(self, shape, cnt=10, r_min=10, r_max=50, border=92, sigma=20, batch_size=1, n_samples=100, train=True):
+        self.shape = shape
+        self.cnt = cnt
+        self.r_min = r_min
+        self.r_max = r_max
+        self.border = border
+        self.sigma = sigma
+        self.batch_size = batch_size
+        self.n_samples = n_samples
+        self.current = 0
+        self.num_steps = n_samples
+        if train:
+            self.num_steps /= float(self.batch_size)
+
+    @classmethod
+    def get_training_and_validation(cls, shape, cnt=10, r_min=10, r_max=30, border=50, batch_size=1, n_samples=100, data_split=0.8):
+        train = cls(shape, cnt=cnt, r_min=r_min, r_max=r_max, border=border, batch_size=batch_size, n_samples=n_samples*data_split)
+        validate = cls(shape, cnt=cnt, r_min=r_min, r_max=r_max, border=border, batch_size=batch_size, n_samples=n_samples*(1-data_split))
+        return train, validate
+
+    def __iter__(self):
+        # Iterators are iterables too.
+        # Adding this functions to make them so.
+        return self
+        
+    def next(self):
+        if self.current > self.n_samples:
+            raise StopIteration
+
+        self.current += 1
+        shape = [1]+list(self.shape)
+        volume = np.zeros(shape)
+        labels = np.zeros(shape)
+        v, l = create_spheres(self.cnt, self.shape[1:], self.border, self.r_min, self.r_max)
+        volume[0, 0, :, :, :] = v
+        labels[0, 0, :, :, :] = l
+        return volume, labels
+
+def create_spheres(num_spheres, shape=(144, 144, 144), border=50, min_r=5, max_r=15):
+    """Create randomly placed and randomy sized spheres inside of a grid
+    """
+    volume = np.random.random(shape)
+    labels = np.zeros(shape)
+    print border, shape
+    for i in xrange(num_spheres):
+        #Define random center of sphere and radius
+        center = [np.random.randint(border, edge-border) for edge in shape]
+        r = np.random.randint(min_r, max_r)
+        color = np.random.random()
+
+        y, x, z = np.ogrid[-center[0]:shape[0]-center[0], -center[1]:shape[1]-center[1], -center[2]:shape[2]-center[2]]
+        m = x*x + y*y + z*z < r*r
+        indices = np.where(m==True)
+        volume[indices] = color
+        labels[indices] = 1
+
+    return volume, labels

@@ -1,10 +1,10 @@
 import pickle
 
-import nibabel as nib
+#import nibabel as nib
 import numpy as np
-from nilearn.image import reorder_img, resample_img
+#from nilearn.image import reorder_img, resample_img
 
-from .nilearn_custom_utils.nilearn_utils import crop_img_to
+#from .nilearn_custom_utils.nilearn_utils import crop_img_to
 
 
 def pickle_dump(item, out_file):
