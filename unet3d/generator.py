@@ -122,6 +122,7 @@ def create_spheres(num_spheres, shape=(144, 144, 144), border=50, min_r=5, max_r
     """
     volume = np.random.random(shape)
     labels = np.zeros(list(shape)+[2])
+    labels[:, :, :] = np.array([1,0])
     print border, shape, map(lambda i: i-border, shape)
     for i in xrange(num_spheres):
         #Define random center of sphere and radius
