@@ -109,18 +109,20 @@ class ExampleSphereGenerator(object):
         self.current += 1
         shape = [1]+list(self.shape)
         volume = np.zeros(shape)
-        labels = np.zeros(shape)
-        v, l = create_spheres(self.cnt, self.shape[1:], self.border, self.r_min, self.r_max)
-        volume[0, 0, :, :, :] = v
-        labels[0, 0, :, :, :] = l
+        labels = np.zeros(shape[:-1]+[2])
+        print volume.shape
+        v, l = create_spheres(self.cnt, self.shape[:-1], self.border, self.r_min, self.r_max)
+        volume[0, :, :, :, 0] = v
+        labels[0, :, :, :, :] = l
+        print volume.shape, labels.shape
         return volume, labels
 
 def create_spheres(num_spheres, shape=(144, 144, 144), border=50, min_r=5, max_r=15):
     """Create randomly placed and randomy sized spheres inside of a grid
     """
     volume = np.random.random(shape)
-    labels = np.zeros(shape)
-    print border, shape
+    labels = np.zeros(list(shape)+[2])
+    print border, shape, map(lambda i: i-border, shape)
     for i in xrange(num_spheres):
         #Define random center of sphere and radius
         center = [np.random.randint(border, edge-border) for edge in shape]
@@ -131,6 +133,6 @@ def create_spheres(num_spheres, shape=(144, 144, 144), border=50, min_r=5, max_r
         m = x*x + y*y + z*z < r*r
         indices = np.where(m==True)
         volume[indices] = color
-        labels[indices] = 1
+        labels[indices] = np.array([0,1])
 
     return volume, labels

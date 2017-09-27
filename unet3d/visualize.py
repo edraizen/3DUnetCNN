@@ -3,12 +3,19 @@ import mayavi.mlab
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def plot_voxels(volume):
+def plot_v(volume):
     xx, yy, zz = np.where(volume == True)
-    mayavi.mlab.points3d(xx, yy, zz,
+    plot_voxels(xx,yy,zz)
+
+def plot_voxels(volume, colors=None, grayscale=True):
+    nodes = mayavi.mlab.points3d(xx, yy, zz,
                          mode="cube",
                          color=(0, 1, 0),
                          scale_factor=1)
+
+    if colors:
+        nodes.mlab_source.dataset.point_data.scalars = colors
+
     mayavi.mlab.show()
 
 def plot_volume(volume):
