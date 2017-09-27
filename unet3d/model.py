@@ -40,25 +40,28 @@ def unet_model_3d(input_shape, downsize_filters_factor=1, pool_size=(2, 2, 2), n
     conv4 = Conv3D(int(256/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(pool3)
     conv4 = Conv3D(int(512/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(conv4)
 
-    up5 = get_upconv(pool_size=pool_size, deconvolution=deconvolution, depth=2,
-                     nb_filters=int(512/downsize_filters_factor), image_shape=input_shape[-3:])(conv4)
+    up5_ = get_upconv(pool_size=pool_size, deconvolution=deconvolution, depth=2,
+                     nb_filters=int(512/downsize_filters_factor), image_shape=input_shape[:3])
+    print up5_.shape
+    up5 = up5_(conv4)
     up5 = concatenate([up5, conv3], axis=1)
     conv5 = Conv3D(int(256/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(up5)
     conv5 = Conv3D(int(256/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(conv5)
 
     up6 = get_upconv(pool_size=pool_size, deconvolution=deconvolution, depth=1,
-                     nb_filters=int(256/downsize_filters_factor), image_shape=input_shape[-3:])(conv5)
+                     nb_filters=int(256/downsize_filters_factor), image_shape=input_shape[:3])(conv5)
     up6 = concatenate([up6, conv2], axis=1)
     conv6 = Conv3D(int(128/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(up6)
     conv6 = Conv3D(int(128/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(conv6)
 
     up7 = get_upconv(pool_size=pool_size, deconvolution=deconvolution, depth=0,
-                     nb_filters=int(128/downsize_filters_factor), image_shape=input_shape[-3:])(conv6)
+                     nb_filters=int(128/downsize_filters_factor), image_shape=input_shape[:3])(conv6)
     up7 = concatenate([up7, conv1], axis=1)
     conv7 = Conv3D(int(64/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(up7)
     conv7 = Conv3D(int(64/downsize_filters_factor), (3, 3, 3), activation='relu', padding='same')(conv7)
 
     conv8 = Conv3D(n_labels, (1, 1, 1))(conv7)
+    print "LAST SIZE", conv8.shape
     act = Activation('sigmoid')(conv8)
     model = Model(inputs=inputs, outputs=act)
 

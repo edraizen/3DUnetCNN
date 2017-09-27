@@ -103,8 +103,8 @@ class ExampleSphereGenerator(object):
         return self
         
     def next(self):
-        if self.current > self.n_samples:
-            raise StopIteration
+        #if self.current > self.n_samples:
+        #    raise StopIteration
 
         self.current += 1
         shape = [1]+list(self.shape)
