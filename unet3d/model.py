@@ -60,7 +60,7 @@ def unet_model_3d(input_shape, downsize_filters_factor=1, pool_size=(2, 2, 2), n
     act = Activation('sigmoid')(conv8)
     model = Model(inputs=inputs, outputs=act)
 
-    model.compile(optimizer=Adam(lr=initial_learning_rate), loss=dice_coef_loss, metrics=[dice_coef])
+    model.compile(optimizer=Adam(lr=initial_learning_rate), loss=IoU_loss, metrics=[IoU])
 
     return model
 
@@ -69,12 +69,20 @@ def dice_coef(y_true, y_pred, smooth=1.):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+    return (2. * intersection + smooth)/(K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
 
 def dice_coef_loss(y_true, y_pred):
     return -dice_coef(y_true, y_pred)
 
+def IoU(y_true, y_pred):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    return intersection/float(K.sum(y_true_f) + K.sum(y_pred_f))
+
+def IoU_loss(y_true, y_pred):
+    return -IoU(y_true, y_pred)
 
 def compute_level_output_shape(filters, depth, pool_size, image_shape):
     """

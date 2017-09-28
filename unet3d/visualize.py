@@ -7,16 +7,19 @@ def plot_v(volume):
     xx, yy, zz = np.where(volume == True)
     plot_voxels(xx,yy,zz)
 
-def plot_voxels(volume, colors=None, grayscale=True):
-    nodes = mayavi.mlab.points3d(xx, yy, zz,
-                         mode="cube",
-                         color=(0, 1, 0),
-                         scale_factor=1)
+def plot_voxels(xx,yy,zz, colors=None, grayscale=True):
+    nodes = mayavi.mlab.points3d(xx, yy, zz, mode="cube", color=(0, 1, 0), scale_factor=1)
 
     if colors:
         nodes.mlab_source.dataset.point_data.scalars = colors
 
     mayavi.mlab.show()
+
+def plot_full_volume(volume, grayscale=True):
+    xx, yy, zz = np.indices((volume[0,...,0].shape))
+    nodes = mayavi.mlab.points3d(xx, yy, zz, mode="cube", scale_factor=1, opacity=0.05)
+    nodes.glyph.scale_mode = 'scale_by_vector'
+    nodes.mlab_source.dataset.point_data.scalars = volume[0,...,0].flatten()
 
 def plot_volume(volume):
     """Plots volume in 3D, interpreting the coordinates as voxels
