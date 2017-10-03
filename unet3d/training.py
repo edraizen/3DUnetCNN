@@ -70,3 +70,13 @@ def train_model(model, model_file, training_generator, validation_generator, ste
                         callbacks=get_callbacks(model_file, initial_learning_rate=initial_learning_rate,
                                                 learning_rate_drop=learning_rate_drop,
                                                 learning_rate_epochs=learning_rate_epochs))
+
+def train_model_cross_validation(model, model_file_prefix, generator, n_folds=5):
+    from sklearn.cross_validation import StratifiedKFold
+
+    data, labels, header_info = load_data()
+    skf = StratifiedKFold(labels, n_folds=n_folds, shuffle=True)
+
+    for i, (train, test) in enumerate(skf):
+            print "Running Fold", i+1, "/", n_folds
+            train_model(model, data[train], labels[train], data[test], labels[test])
