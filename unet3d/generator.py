@@ -1,4 +1,4 @@
-import os
+2import os
 from random import shuffle
 
 import numpy as np
@@ -80,12 +80,11 @@ class DistributedH5FileGenerator(object):
         return data["data"], data["truth"]
 
 class FileGenerator(object):
-	def __init__(self, data, truth, n_samples, batch_size=1):
-		self.data = data
-		self.it = 
-		self.current = 0
-		self.batch_size = batch_size
-		self.n_samples = n_samples
+    def __init__(self, data, truth, n_samples, batch_size=1):
+        self.data = data
+        self.current = 0
+        self.batch_size = batch_size
+        self.n_samples = n_samples
         self.current = 0
         self.num_steps = n_samples
         if train:
@@ -98,38 +97,38 @@ class FileGenerator(object):
         truth_files = [np.load(file, mmap_mode="r") for file in truth_files]
 
         if num_classes_per_file is None:
-        	assert 0, "Not implemented, must choose 2"
+            assert 0, "Not implemented, must choose 2"
 
         if num_samples_per_class is None:
-        	assert 0, "Not implemented, must choose 20"
+            assert 0, "Not implemented, must choose 20"
 
         train_num = num_samples_per_class*data_split
         validation_num = num_samples_per_class-train_num
 
         train = (cls(
-        	f[:train_num],
-        	t[:train_num],
-        	n_samples=train_num, 
-        	batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
+            f[:train_num],
+            t[:train_num],
+            n_samples=train_num, 
+            batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
 
         validation = (cls(
-        	f[train_num:], 
-        	t[train_num:],
-        	n_samples=validation_num, 
-        	batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
+            f[train_num:], 
+            t[train_num:],
+            n_samples=validation_num, 
+            batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
 
         train_gen = it.chain(iter(t) for t in train)
-		validation_gen = it.chain(iter(v) for v in validation)
+        validation_gen = it.chain(iter(v) for v in validation)
 
         return train, validation, train_gen, validation_gen
 
     def __iter__(self):
-    	return self
+        return self
 
     def next(self):
-    	data = self.data[self.current, ...]
-    	self.current += 1
-    	return data
+        data = self.data[self.current, ...]
+        self.current += 1
+        return data
 
 class NiftyFileUNet3d(DataGenerator):
     @classmethod
