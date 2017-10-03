@@ -50,21 +50,86 @@ class DataGenerator(object):
 
         return x, y
 
-class FileGenerator(DataGenerator):
-    @classmethod
-    def from_files(cls, files, truth_files=None, batch_size=1, data_split=0.8, num_samples=None):
-        """Read in data from one more more numpy files"""
-        (np.load(file) for file in files)
+class DistributedH5FileGenerator(object):
+    def __init__(self, files, batch_size=1, train=True):
+        self.files = files
+        self.batch_size = batch_size
+        self.shape = shape
+        self.augment = augment
+        self.num_steps = len(files)
+        if train:
+            self.num_steps /= float(self.batch_size)
 
     @classmethod
-    def get_training_and_validation(cls, data_files, truth_files, batch_size=1, data_split=0.8, num_samples=None):
-        assert lens(data_files) == len(truth_files)
-        for data_file, truth_file in it.izip(data_files, truth_files):
-            pass
-        
-        train = cls()
-        validation = cls()
+    def get_training_and_validation(cls, files, batch_size=1, data_split=0.8, num_samples=None, shuffle_list=True):
+        n_training = len(files) * data_split
+        files = np.array(files)
+        indexes = range(data.shape[0])
+        if shuffle_list:
+            shuffle(indexes)
+
+        train = cls(files[indexes[:n_training]], batch_size=batch_size)
+        validation = cls(files[indexes[n_training:]], batch_size=batch_size, train=False)
         return train, validation
+
+    def __iter__(self):
+        return self
+
+    def next():
+        data = self.files[self.current]
+        return data["data"], data["truth"]
+
+class FileGenerator(object):
+	def __init__(self, data, truth, n_samples, batch_size=1):
+		self.data = data
+		self.it = 
+		self.current = 0
+		self.batch_size = batch_size
+		self.n_samples = n_samples
+        self.current = 0
+        self.num_steps = n_samples
+        if train:
+            self.num_steps /= float(self.batch_size)
+
+    @classmethod
+    def get_training_and_validation(cls, data_files, truth_files, batch_size=1, data_split=0.8, num_samples=None, num_samples_per_class=None, num_classes_per_file=None):
+        """Read in data from one more more numpy files"""
+        data_files = [np.load(file, mmap_mode="r") for file in data_files]
+        truth_files = [np.load(file, mmap_mode="r") for file in truth_files]
+
+        if num_classes_per_file is None:
+        	assert 0, "Not implemented, must choose 2"
+
+        if num_samples_per_class is None:
+        	assert 0, "Not implemented, must choose 20"
+
+        train_num = num_samples_per_class*data_split
+        validation_num = num_samples_per_class-train_num
+
+        train = (cls(
+        	f[:train_num],
+        	t[:train_num],
+        	n_samples=train_num, 
+        	batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
+
+        validation = (cls(
+        	f[train_num:], 
+        	t[train_num:],
+        	n_samples=validation_num, 
+        	batch_size=batch_size) for f, t in it.izip(data_files, truth_files))
+
+        train_gen = it.chain(iter(t) for t in train)
+		validation_gen = it.chain(iter(v) for v in validation)
+
+        return train, validation, train_gen, validation_gen
+
+    def __iter__(self):
+    	return self
+
+    def next(self):
+    	data = self.data[self.current, ...]
+    	self.current += 1
+    	return data
 
 class NiftyFileUNet3d(DataGenerator):
     @classmethod
