@@ -1,10 +1,8 @@
-2import os
+import os
 from random import shuffle
 
 import numpy as np
-
-#from .utils import pickle_dump, pickle_load
-#from .augment import augment_data
+import h5py
 
 import itertools as it
 
@@ -54,20 +52,21 @@ class DistributedH5FileGenerator(object):
     def __init__(self, files, batch_size=1, train=True):
         self.files = files
         self.batch_size = batch_size
-        self.shape = shape
-        self.augment = augment
         self.num_steps = len(files)
         if train:
             self.num_steps /= float(self.batch_size)
+        self.current = 0
+        self.indexes = range(len(files))
+        self.train = train
 
     @classmethod
     def get_training_and_validation(cls, files, batch_size=1, data_split=0.8, num_samples=None, shuffle_list=True):
-        n_training = len(files) * data_split
+        n_training = int(len(files) * data_split)
         files = np.array(files)
-        indexes = range(data.shape[0])
+        indexes = range(len(files))
         if shuffle_list:
             shuffle(indexes)
-
+	indexes = np.array(indexes)
         train = cls(files[indexes[:n_training]], batch_size=batch_size)
         validation = cls(files[indexes[n_training:]], batch_size=batch_size, train=False)
         return train, validation
@@ -75,9 +74,23 @@ class DistributedH5FileGenerator(object):
     def __iter__(self):
         return self
 
-    def next():
-        data = self.files[self.current]
-        return data["data"], data["truth"]
+    def update(self):
+        print "Updating"
+        self.indexes = shuffle(self.indexes)
+        self.current = 0
+        print "index is now", self.current
+
+    def next(self): 
+       print self.current, self.indexes[self.current], self.files[self.indexes[self.current]]
+       with h5py.File(os.path.abspath(self.files[self.indexes[self.current]]), "r") as f:
+		data = f["data"][()][np.newaxis]
+		truth = f["truth"][()][np.newaxis]
+       print self.train, self.current, len(self.indexes)-1
+       if self.current < len(self.indexes)-1:
+           self.current += 1
+       else:
+           self.update()
+       return data, truth
 
 class FileGenerator(object):
     def __init__(self, data, truth, n_samples, batch_size=1):
